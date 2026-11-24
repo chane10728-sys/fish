@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>擲雙骰子對決</title>
+  <style>
+    :root { color-scheme: dark; --bg:#111827; --panel:#1f2937; --gold:#fbbf24; --muted:#cbd5e1; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+      font-family: system-ui, "Noto Sans TC", sans-serif;
+      background: radial-gradient(circle at top, #334155, var(--bg) 65%); color: #f8fafc;
+    }
+    main { width: min(760px, 100%); }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 6vw, 3rem); }
+    header p { margin: 0; color: var(--muted); }
+    .scoreboard, .rules, .result { background: rgba(31,41,55,.92); border: 1px solid #475569; border-radius: 18px; padding: 18px; }
+    .scoreboard { display: flex; align-items: center; justify-content: space-around; gap: 12px; margin-bottom: 18px; }
+    .score { text-align: center; }
+    .score strong { display: block; font-size: 2.5rem; color: var(--gold); }
+    .score span { color: var(--muted); }
+    .versus { color: #94a3b8; font-weight: 800; }
+    .arena { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .player { text-align: center; background: rgba(31,41,55,.92); border: 1px solid #475569; border-radius: 18px; padding: 18px 12px; }
+    .player h2 { margin: 0 0 12px; font-size: 1.2rem; }
+    .dice { display: flex; justify-content: center; gap: 10px; min-height: 76px; align-items: center; }
+    .die { width: 68px; height: 68px; border-radius: 14px; display: grid; place-items: center; background: #f8fafc; color: #111827; font-size: 2.5rem; font-weight: 900; box-shadow: 0 5px 0 #cbd5e1; }
+    .total { margin: 14px 0 4px; font-size: 1.1rem; color: var(--muted); }
+    .tag { min-height: 24px; color: var(--gold); font-weight: 800; }
+    .controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+    button { border: 0; border-radius: 999px; padding: 13px 24px; font: inherit; font-weight: 800; cursor: pointer; }
+    button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+    #roll { background: var(--gold); color: #1f2937; }
+    #reset { background: #334155; color: #f8fafc; border: 1px solid #64748b; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .result { text-align: center; min-height: 62px; margin-bottom: 18px; font-weight: 700; }
+    .rules { color: var(--muted); }
+    .rules h3 { color: #f8fafc; margin: 0 0 8px; }
+    .rules ol { margin: 0; padding-left: 22px; line-height: 1.8; }
+    @keyframes shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-9deg) scale(1.08)} 75%{transform:rotate(9deg) scale(1.08)} }
+    .rolling .die { animation: shake .45s ease-in-out; }
+    @media (max-width: 480px) {
+      body { padding: 14px; }
+      .player { padding: 14px 8px; }
+      .die { width: 56px; height: 56px; font-size: 2rem; }
+      .scoreboard { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>🎲 擲雙骰子對決</h1>
+      <p>和電腦比一比，誰先拿下 3 勝！</p>
+    </header>
+
+    <section class="scoreboard" aria-label="目前比分">
+      <div class="score"><span>🧑 玩家</span><strong id="playerScore">0</strong></div>
+      <div class="versus">VS</div>
+      <div class="score"><span>🤖 電腦</span><strong id="computerScore">0</strong></div>
+    </section>
+
+    <section class="arena">
+      <article class="player" id="playerPanel">
+        <h2>🧑 玩家</h2>
+        <div class="dice"><div class="die" id="pDie1">⚀</div><div class="die" id="pDie2">⚀</div></div>
+        <p class="total">總點數：<strong id="pTotal">—</strong></p>
+        <div class="tag" id="pTag"></div>
+      </article>
+      <article class="player" id="computerPanel">
+        <h2>🤖 電腦</h2>
+        <div class="dice"><div class="die" id="cDie1">⚀</div><div class="die" id="cDie2">⚀</div></div>
+        <p class="total">總點數：<strong id="cTotal">—</strong></p>
+        <div class="tag" id="cTag"></div>
+      </article>
+    </section>
+
+    <div class="controls">
+      <button id="roll">🎲 擲骰子</button>
+      <button id="reset">重新開始</button>
+    </div>
+    <div class="result" id="result" role="status" aria-live="polite">按下「擲骰子」開始遊戲！</div>
+
+    <section class="rules">
+      <h3>📜 遊戲規則</h3>
+      <ol>
+        <li>玩家和電腦每回合各擲 2 顆骰子，每顆 1～6 點。</li>
+        <li>兩顆點數相同就是「豹子」；有豹子的一方直接獲勝。</li>
+        <li>若雙方都有豹子或都沒有豹子，就比較兩顆骰子的總和。</li>
+        <li>平手不加分；先取得 3 勝的一方獲得最終勝利。</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    const faces = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+    let playerWins = 0, computerWins = 0, round = 1, finished = false;
+
+    const $ = id => document.getElementById(id);
+    function rollDie() { return Math.floor(Math.random() * 6) + 1; }
+
+    function rollRound() {
+      if (finished) return;
+      const button = $("roll");
+      button.disabled = true;
+      $("result").textContent = `第 ${round} 回合：骰子滾動中…`;
+      $("playerPanel").classList.add("rolling");
+      $("computerPanel").classList.add("rolling");
+
+      setTimeout(() => {
+        const p1 = rollDie(), p2 = rollDie(), c1 = rollDie(), c2 = rollDie();
+        const pTotal = p1 + p2, cTotal = c1 + c2;
+        const pBaozi = p1 === p2, cBaozi = c1 === c2;
+
+        $("pDie1").textContent = faces[p1];
+        $("pDie2").textContent = faces[p2];
+        $("cDie1").textContent = faces[c1];
+        $("cDie2").textContent = faces[c2];
+        $("pTotal").textContent = pTotal;
+        $("cTotal").textContent = cTotal;
+        $("pTag").textContent = pBaozi ? "🔥 豹子！" : "";
+        $("cTag").textContent = cBaozi ? "🔥 豹子！" : "";
+        $("playerPanel").classList.remove("rolling");
+        $("computerPanel").classList.remove("rolling");
+
+        let message;
+        if (pBaozi && !cBaozi) {
+          playerWins++; message = "🎉 玩家擲出豹子通殺！本回合玩家獲勝！";
+        } else if (cBaozi && !pBaozi) {
+          computerWins++; message = "💀 電腦擲出豹子通殺！本回合電腦獲勝！";
+        } else if (pTotal > cTotal) {
+          playerWins++; message = "🎉 玩家點數較大！本回合玩家獲勝！";
+        } else if (cTotal > pTotal) {
+          computerWins++; message = "💀 電腦點數較大！本回合電腦獲勝！";
+        } else {
+          message = "🤝 雙方平手！這局不算分。";
+        }
+
+        $("playerScore").textContent = playerWins;
+        $("computerScore").textContent = computerWins;
+        round++;
+
+        if (playerWins === 3 || computerWins === 3) {
+          finished = true;
+          message += playerWins === 3
+            ? `\n🏆 恭喜！你以 ${playerWins}：${computerWins} 擊敗電腦，獲得最終勝利！`
+            : `\n😭 電腦以 ${computerWins}：${playerWins} 獲勝，下次再接再厲！`;
+          button.textContent = "已結束";
+        }
+        $("result").textContent = message;
+        button.disabled = finished;
+      }, 480);
+    }
+
+    function resetGame() {
+      playerWins = 0; computerWins = 0; round = 1; finished = false;
+      $("playerScore").textContent = "0";
+      $("computerScore").textContent = "0";
+      ["pDie1", "pDie2", "cDie1", "cDie2"].forEach(id => $(id).textContent = "⚀");
+      ["pTotal", "cTotal"].forEach(id => $(id).textContent = "—");
+      $("pTag").textContent = ""; $("cTag").textContent = "";
+      $("result").textContent = "按下「擲骰子」開始遊戲！";
+      $("roll").disabled = false; $("roll").textContent = "🎲 擲骰子";
+    }
+
+    $("roll").addEventListener("click", rollRound);
+    $("reset").addEventListener("click", resetGame);
+  </script>
+</body>
+</html>
